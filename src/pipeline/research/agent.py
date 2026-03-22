@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import anthropic
 from .models import FeasibilityReport

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from .intake.agent import process_intake, ingest_from_slack, ingest_from_email, ingest_from_zoom
 from .intake.models import ProjectBrief
