@@ -60,7 +60,8 @@
 - **AI Layer:** Claude API via Anthropic SDK
 - **Orchestration:** Claude Agent SDK or LangGraph
 - **Data:** PostgreSQL + vector DB (for RAG over project history)
-- **PM Integration:** Linear API
+- **Intake Connectors:** Slack API, Gmail API, Zoom API (meeting transcripts)
+- **PM Integration:** Linear API + Notion API
 - **Frontend:** Next.js + Vercel AI SDK
 - **CI/CD:** GitHub Actions
 - **Observability:** OpenTelemetry

@@ -1,7 +1,10 @@
 import json
 import anthropic
-from ..intake.models import ProjectBrief
+from .models import ProjectBrief
 from ...utils.config import Config
+from ...integrations.slack import SlackConnector
+from ...integrations.gmail import GmailConnector
+from ...integrations.zoom import ZoomConnector
 
 INTAKE_SYSTEM_PROMPT = """You are an AI product manager for Kisasa.io, a software consulting firm that builds and ships alongside client teams.
 
@@ -31,6 +34,24 @@ Always respond with valid JSON matching the ProjectBrief schema."""
 
 def create_intake_agent():
     return anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+
+
+async def ingest_from_slack(channel_id: str, limit: int = 100) -> str:
+    """Pull conversation from a Slack channel and return as text."""
+    connector = SlackConnector()
+    return await connector.format_conversation(channel_id, limit)
+
+
+async def ingest_from_email(thread_id: str) -> str:
+    """Pull an email thread from Gmail and return as text."""
+    connector = GmailConnector()
+    return await connector.format_thread(thread_id)
+
+
+async def ingest_from_zoom(meeting_id: str) -> str:
+    """Pull a Zoom meeting transcript and return as text."""
+    connector = ZoomConnector()
+    return await connector.format_meeting(meeting_id)
 
 
 def process_intake(raw_input: str) -> ProjectBrief:
