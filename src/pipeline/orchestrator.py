@@ -1,23 +1,34 @@
 import json
 from .intake.agent import process_intake, ingest_from_slack, ingest_from_email, ingest_from_zoom
+from .intake.models import ProjectBrief
 from .research.agent import process_research
 from .roadmap.agent import process_roadmap
+from .roadmap.models import Roadmap
+from .build.agent import generate_build_report
+from .qa.agent import generate_test_cases, generate_validation_report
+from .qa.models import TestResult, TestStatus
+from .launch.agent import generate_handoff
+from .retro.agent import generate_retro
 from ..integrations.linear import LinearConnector
 from ..integrations.notion import NotionConnector
 
 
-async def run_pipeline(
+# ---------------------------------------------------------------------------
+# Stage 1-3: Intake → Research → Roadmap
+# ---------------------------------------------------------------------------
+
+async def run_planning_pipeline(
     raw_input: str | None = None,
     slack_channel_id: str | None = None,
     email_thread_id: str | None = None,
     zoom_meeting_id: str | None = None,
 ) -> dict:
-    """Run the full pipeline from intake through roadmap generation.
+    """Run Stages 1-3: Intake → Research → Roadmap.
 
     Provide one of: raw_input, slack_channel_id, email_thread_id, or zoom_meeting_id.
     """
 
-    # Stage 1: Intake — gather raw input from the right source
+    # Stage 1: Intake
     if slack_channel_id:
         raw_input = await ingest_from_slack(slack_channel_id)
     elif email_thread_id:
@@ -57,13 +68,99 @@ async def run_pipeline(
     }
 
 
+# ---------------------------------------------------------------------------
+# Stage 4: Build & Ship — monitor active development
+# ---------------------------------------------------------------------------
+
+async def run_build_monitor(
+    roadmap: Roadmap,
+    milestone_index: int,
+    owner: str,
+    repo: str,
+    completed_story_count: int,
+) -> dict:
+    """Run Stage 4: Monitor build progress for a milestone."""
+    milestone = roadmap.milestones[milestone_index]
+    report = await generate_build_report(milestone, owner, repo, completed_story_count)
+    print(f"[Stage 4] Build report: {report.overall_health} | {report.stories_completed}/{report.stories_total} stories")
+    return {"stage": "build", "report": report.model_dump()}
+
+
+# ---------------------------------------------------------------------------
+# Stage 5: QA & Validation
+# ---------------------------------------------------------------------------
+
+def run_qa(
+    roadmap: Roadmap,
+    milestone_index: int,
+    test_results: list[dict] | None = None,
+    bug_reports: list[dict] | None = None,
+    uat_feedback_items: list[dict] | None = None,
+) -> dict:
+    """Run Stage 5: Generate test cases and compile validation report."""
+    from .qa.models import BugTicket, UATFeedback
+
+    milestone = roadmap.milestones[milestone_index]
+
+    # Parse inputs
+    results = [TestResult(**r) for r in test_results] if test_results else []
+    bugs = [BugTicket(**b) for b in bug_reports] if bug_reports else []
+    feedback = [UATFeedback(**f) for f in uat_feedback_items] if uat_feedback_items else []
+
+    validation = generate_validation_report(milestone, results, bugs, feedback)
+    print(f"[Stage 5] QA complete: {validation.pass_rate:.0%} pass rate | Ready: {validation.ready_for_launch}")
+    return {"stage": "qa", "validation": validation.model_dump()}
+
+
+# ---------------------------------------------------------------------------
+# Stage 6: Launch & Handoff
+# ---------------------------------------------------------------------------
+
+def run_launch(pipeline_result: dict) -> dict:
+    """Run Stage 6: Generate handoff package."""
+    from .qa.models import ValidationReport
+
+    brief = ProjectBrief(**pipeline_result["brief"])
+    roadmap = Roadmap(**pipeline_result["roadmap"])
+    validation = ValidationReport(**pipeline_result["validation"])
+
+    if not validation.ready_for_launch:
+        print(f"[Stage 6] WARNING: Launching with {len(validation.blockers)} blocker(s)")
+
+    handoff = generate_handoff(brief, roadmap, validation)
+    print(f"[Stage 6] Handoff package generated: {len(handoff.documentation)} docs, {len(handoff.runbook)} runbook steps")
+    return {"stage": "launch", "handoff": handoff.model_dump()}
+
+
+# ---------------------------------------------------------------------------
+# Stage 7: Retrospective & Learning
+# ---------------------------------------------------------------------------
+
+def run_retro(
+    pipeline_result: dict,
+    actual_duration: str,
+    story_actuals: list[dict],
+) -> dict:
+    """Run Stage 7: Generate retrospective report."""
+    brief = ProjectBrief(**pipeline_result["brief"])
+    roadmap = Roadmap(**pipeline_result["roadmap"])
+
+    retro = generate_retro(brief, roadmap, actual_duration, story_actuals)
+    print(f"[Stage 7] Retro complete: {retro.average_accuracy_pct:.0f}% estimation accuracy")
+    print(f"[Stage 7] {len(retro.insights)} insights, {len(retro.updated_estimation_rules)} new estimation rules")
+    return {"stage": "retro", "retro": retro.model_dump()}
+
+
+# ---------------------------------------------------------------------------
+# Integration helpers
+# ---------------------------------------------------------------------------
+
 async def sync_to_linear(roadmap_result: dict, team_id: str) -> list[dict]:
     """Push roadmap stories to Linear as issues."""
     linear = LinearConnector()
     roadmap = roadmap_result["roadmap"]
     created_issues = []
 
-    # Create a project
     project = await linear.create_project(
         team_ids=[team_id],
         name=roadmap["project_title"],
@@ -71,7 +168,6 @@ async def sync_to_linear(roadmap_result: dict, team_id: str) -> list[dict]:
     )
     print(f"[Linear] Created project: {project.get('name')}")
 
-    # Create issues for each story across milestones
     for milestone in roadmap["milestones"]:
         for story in milestone["stories"]:
             priority_map = {"small": 4, "medium": 3, "large": 2, "xlarge": 1}
