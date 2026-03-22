@@ -58,7 +58,7 @@
 
 - **Language:** Python (backend agents) + TypeScript (dashboard)
 - **AI Layer:** Claude API via Anthropic SDK
-- **Orchestration:** Claude Agent SDK or LangGraph
+- **Orchestration:** Traced pipeline orchestrator with stage decorators
 - **Data:** PostgreSQL + vector DB (for RAG over project history)
 - **Intake Connectors:** Slack API, Gmail API, Zoom API (meeting transcripts)
 - **PM Integration:** Linear API + Notion API

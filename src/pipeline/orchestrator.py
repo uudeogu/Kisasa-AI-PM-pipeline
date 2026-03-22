@@ -13,12 +13,14 @@ from .launch.agent import generate_handoff
 from .retro.agent import generate_retro
 from ..integrations.linear import LinearConnector
 from ..integrations.notion import NotionConnector
+from ..observability.tracing import trace_stage
 
 
 # ---------------------------------------------------------------------------
 # Stage 1-3: Intake → Research → Roadmap
 # ---------------------------------------------------------------------------
 
+@trace_stage("planning_pipeline")
 async def run_planning_pipeline(
     raw_input: str | None = None,
     slack_channel_id: str | None = None,
@@ -74,6 +76,7 @@ async def run_planning_pipeline(
 # Stage 4: Build & Ship — monitor active development
 # ---------------------------------------------------------------------------
 
+@trace_stage("build_monitor")
 async def run_build_monitor(
     roadmap: Roadmap,
     milestone_index: int,
@@ -92,6 +95,7 @@ async def run_build_monitor(
 # Stage 5: QA & Validation
 # ---------------------------------------------------------------------------
 
+@trace_stage("qa")
 def run_qa(
     roadmap: Roadmap,
     milestone_index: int,
@@ -118,6 +122,7 @@ def run_qa(
 # Stage 6: Launch & Handoff
 # ---------------------------------------------------------------------------
 
+@trace_stage("launch")
 def run_launch(pipeline_result: dict) -> dict:
     """Run Stage 6: Generate handoff package."""
     from .qa.models import ValidationReport
@@ -138,6 +143,7 @@ def run_launch(pipeline_result: dict) -> dict:
 # Stage 7: Retrospective & Learning
 # ---------------------------------------------------------------------------
 
+@trace_stage("retro")
 def run_retro(
     pipeline_result: dict,
     actual_duration: str,
