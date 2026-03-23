@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-import json
 import anthropic
 from .models import ProjectBrief
 from ...utils.config import Config
+from ...utils.json_extract import extract_json
+from ...utils.normalize import normalize_brief
+from ...utils.schemas import BRIEF_SCHEMA, schema_instruction
 from ...integrations.slack import SlackConnector
 from ...integrations.gmail import GmailConnector
 from ...integrations.zoom import ZoomConnector
@@ -63,7 +65,7 @@ def process_intake(raw_input: str) -> ProjectBrief:
     message = client.messages.create(
         model=Config.MODEL,
         max_tokens=2048,
-        system=INTAKE_SYSTEM_PROMPT,
+        system=INTAKE_SYSTEM_PROMPT + schema_instruction(BRIEF_SCHEMA),
         messages=[
             {
                 "role": "user",
@@ -73,7 +75,8 @@ def process_intake(raw_input: str) -> ProjectBrief:
     )
 
     response_text = message.content[0].text
-    brief_data = json.loads(response_text)
+    brief_data = extract_json(response_text)
+    brief_data = normalize_brief(brief_data)
     return ProjectBrief(**brief_data)
 
 

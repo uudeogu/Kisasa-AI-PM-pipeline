@@ -9,7 +9,7 @@ load_dotenv()
 class Config:
     # AI
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-    MODEL = "claude-sonnet-4-6-20250514"
+    MODEL = "claude-sonnet-4-5-20250929"
 
     # Intake connectors
     SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")

@@ -6,6 +6,7 @@ from .models import RetroReport
 from ..roadmap.models import Roadmap
 from ..intake.models import ProjectBrief
 from ...utils.config import Config
+from ...utils.json_extract import extract_json
 
 RETRO_PROMPT = """You are a delivery analyst for Kisasa.io conducting a project retrospective.
 
@@ -56,5 +57,5 @@ def generate_retro(
         ],
     )
 
-    retro_data = json.loads(message.content[0].text)
+    retro_data = extract_json(message.content[0].text)
     return RetroReport(**retro_data)

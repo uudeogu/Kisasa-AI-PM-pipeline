@@ -5,6 +5,7 @@ import anthropic
 from .models import TestCase, BugTicket, UATFeedback, ValidationReport, TestResult, TestStatus
 from ..roadmap.models import Milestone
 from ...utils.config import Config
+from ...utils.json_extract import extract_json
 
 TEST_GEN_PROMPT = """You are a QA engineer for Kisasa.io.
 
@@ -63,7 +64,7 @@ def generate_test_cases(milestone: Milestone) -> list[TestCase]:
         ],
     )
 
-    test_data = json.loads(message.content[0].text)
+    test_data = extract_json(message.content[0].text)
     return [TestCase(**tc) for tc in test_data]
 
 
@@ -86,7 +87,7 @@ def triage_uat_feedback(raw_feedback: str, story_titles: list[str]) -> UATFeedba
         ],
     )
 
-    feedback_data = json.loads(message.content[0].text)
+    feedback_data = extract_json(message.content[0].text)
     return UATFeedback(**feedback_data)
 
 
@@ -109,7 +110,7 @@ def triage_bug_report(raw_report: str, story_titles: list[str]) -> BugTicket:
         ],
     )
 
-    bug_data = json.loads(message.content[0].text)
+    bug_data = extract_json(message.content[0].text)
     return BugTicket(**bug_data)
 
 

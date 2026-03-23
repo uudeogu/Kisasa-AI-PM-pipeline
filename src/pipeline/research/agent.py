@@ -5,6 +5,9 @@ import anthropic
 from .models import FeasibilityReport
 from ..intake.models import ProjectBrief
 from ...utils.config import Config
+from ...utils.json_extract import extract_json
+from ...utils.normalize import normalize_report
+from ...utils.schemas import REPORT_SCHEMA, schema_instruction
 
 RESEARCH_SYSTEM_PROMPT = """You are a senior technical analyst for Kisasa.io, a software consulting firm.
 
@@ -32,7 +35,7 @@ def process_research(brief: ProjectBrief) -> FeasibilityReport:
     message = client.messages.create(
         model=Config.MODEL,
         max_tokens=4096,
-        system=RESEARCH_SYSTEM_PROMPT,
+        system=RESEARCH_SYSTEM_PROMPT + schema_instruction(REPORT_SCHEMA),
         messages=[
             {
                 "role": "user",
@@ -42,7 +45,8 @@ def process_research(brief: ProjectBrief) -> FeasibilityReport:
     )
 
     response_text = message.content[0].text
-    report_data = json.loads(response_text)
+    report_data = extract_json(response_text)
+    report_data = normalize_report(report_data)
     return FeasibilityReport(**report_data)
 
 

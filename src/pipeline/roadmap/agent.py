@@ -6,6 +6,9 @@ from .models import Roadmap
 from ..research.models import FeasibilityReport
 from ..intake.models import ProjectBrief
 from ...utils.config import Config
+from ...utils.json_extract import extract_json
+from ...utils.normalize import normalize_roadmap
+from ...utils.schemas import ROADMAP_SCHEMA, schema_instruction
 
 ROADMAP_SYSTEM_PROMPT = """You are a senior product manager for Kisasa.io, a software consulting firm.
 
@@ -43,8 +46,8 @@ def process_roadmap(brief: ProjectBrief, report: FeasibilityReport) -> Roadmap:
 
     message = client.messages.create(
         model=Config.MODEL,
-        max_tokens=8192,
-        system=ROADMAP_SYSTEM_PROMPT,
+        max_tokens=16384,
+        system=ROADMAP_SYSTEM_PROMPT + schema_instruction(ROADMAP_SCHEMA),
         messages=[
             {
                 "role": "user",
@@ -54,5 +57,6 @@ def process_roadmap(brief: ProjectBrief, report: FeasibilityReport) -> Roadmap:
     )
 
     response_text = message.content[0].text
-    roadmap_data = json.loads(response_text)
+    roadmap_data = extract_json(response_text)
+    roadmap_data = normalize_roadmap(roadmap_data)
     return Roadmap(**roadmap_data)

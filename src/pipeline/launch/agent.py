@@ -7,6 +7,7 @@ from ..roadmap.models import Roadmap
 from ..qa.models import ValidationReport
 from ..intake.models import ProjectBrief
 from ...utils.config import Config
+from ...utils.json_extract import extract_json
 
 HANDOFF_PROMPT = """You are a delivery lead for Kisasa.io preparing a client handoff package.
 
@@ -60,5 +61,5 @@ def generate_handoff(
         ],
     )
 
-    handoff_data = json.loads(message.content[0].text)
+    handoff_data = extract_json(message.content[0].text)
     return HandoffPackage(**handoff_data)
