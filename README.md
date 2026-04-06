@@ -1,72 +1,48 @@
 # Kisasa AI PM Pipeline
 
-AI-powered product development pipeline for [kisasa.io](https://kisasa.io) — automating the journey from client intake to shipped product.
+An opinionated guide to AI-assisted product development — how to integrate AI agents into real development workflows without losing the human judgment that makes software good.
 
-## Pipeline Stages
+This is **not** a product you install. It's a set of opinions, patterns, and workflows for teams that want to use AI agents in their development process while keeping humans in control of the decisions that matter.
 
-1. **Intake & Discovery** — Extract requirements from client conversations, generate project briefs
-2. **Research & Feasibility** — Market scanning, competitor analysis, technical feasibility
-3. **Roadmap & Planning** — AI-generated roadmaps, stories, and effort estimates
-4. **Build & Ship** — Code assist, PR reviews, scope creep detection
-5. **QA & Validation** — Auto-generated test cases, regression checks, UAT triage
-6. **Launch & Handoff** — Documentation, runbooks, onboarding guides
-7. **Retrospective & Learning** — Outcome analysis, feedback loop into pipeline
+## Philosophy
 
-## Project Structure
+**Think about how humans do it first, then make the technology match.**
+
+The temptation with AI agents is to automate everything end-to-end. Customer feedback comes in, tickets get created, code gets written, PRs get merged — all hands-free. We believe that's the wrong approach.
+
+Real development teams have good reasons for their workflows. A developer picks up a ticket manually because they need to understand it first. A PM answers clarifying questions because context matters. Backend gets built before frontend because the contract needs to be stable. These aren't inefficiencies to optimize away — they're the practices that prevent expensive mistakes.
+
+Our approach: **more human touchpoints, less automation. Just because we can automate doesn't mean we should.**
+
+## The Workflow
 
 ```
-├── src/
-│   ├── agents/          # AI agent definitions
-│   ├── pipeline/        # Pipeline stage implementations
-│   │   ├── intake/      # Stage 1: Intake & Discovery
-│   │   ├── research/    # Stage 2: Research & Feasibility
-│   │   ├── roadmap/     # Stage 3: Roadmap & Planning
-│   │   ├── build/       # Stage 4: Build & Ship
-│   │   ├── qa/          # Stage 5: QA & Validation
-│   │   ├── launch/      # Stage 6: Launch & Handoff
-│   │   └── retro/       # Stage 7: Retrospective & Learning
-│   ├── integrations/    # Third-party API connectors (Linear, GitHub, Slack)
-│   └── utils/           # Shared utilities
-├── docs/
-│   ├── architecture/    # Pipeline architecture docs
-│   └── research/        # Research sources and references
-├── tests/
-└── dashboard/           # Next.js frontend (future)
+┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
+│ Backlog  │──▶│  To-Do   │──▶│   In     │──▶│  Review  │──▶│   Done   │
+│          │   │          │   │ Progress │   │          │   │          │
+│ Safe     │   │ Agent    │   │ Agent    │   │ Human    │   │          │
+│ space.   │   │ evaluates│   │ builds.  │   │ verifies.│   │          │
+│ No agents│   │ & asks   │   │ Human    │   │          │   │          │
+│ here.    │   │ questions.│  │ triggered│   │          │   │          │
+└──────────┘   └──────────┘   └──────────┘   └──────────┘   └──────────┘
 ```
 
-## Tech Stack
+See [docs/workflow.md](docs/workflow.md) for the full breakdown.
 
-- **AI:** Claude API (Anthropic SDK)
-- **Backend:** Python
-- **Orchestration:** Claude Agent SDK
-- **Data:** PostgreSQL + Vector DB
-- **Frontend:** Next.js + Vercel AI SDK
-- **CI/CD:** GitHub Actions
+## What's Here
 
-## Getting Started
+| Document | What it covers |
+|----------|---------------|
+| [docs/workflow.md](docs/workflow.md) | The full workflow from Backlog to Done, with each column's rules |
+| [docs/agents.md](docs/agents.md) | Agent roles, responsibilities, and how they interact with humans |
+| [docs/opinions.md](docs/opinions.md) | Every opinionated decision we made and why |
+| [docs/testing.md](docs/testing.md) | Testing strategy — unit, integration, and E2E with Playwright |
+| [docs/architecture.md](docs/architecture.md) | Technical architecture and integration patterns |
 
-```bash
-# Clone the repo
-git clone https://github.com/uudeogu/Kisasa-AI-PM-pipeline.git
-cd Kisasa-AI-PM-pipeline
+## Who This Is For
 
-# Set up environment
-cp .env.example .env
-# Add your ANTHROPIC_API_KEY to .env
+Teams that want to use AI coding agents but are wary of fully autonomous workflows. Teams that believe the right amount of automation is less than the maximum possible. Teams that want opinions backed by reasoning, not just "best practices."
 
-# Install dependencies
-pip install -r requirements.txt
+---
 
-# Run the intake agent
-python -m src.pipeline.intake.agent
-```
-
-## Divisions
-
-The pipeline routes work across Kisasa's three divisions:
-
-| Division | Focus |
-|----------|-------|
-| **Ventures** | Investment & new product development |
-| **Labs** | System modernization & architecture |
-| **Strategy** | Developer ecosystems & adoption planning |
+Built by [Kisasa](https://kisasa.io)
