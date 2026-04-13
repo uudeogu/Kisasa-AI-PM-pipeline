@@ -20,10 +20,11 @@ Our approach: **more human touchpoints, less automation. Just because we can aut
 ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
 │ Backlog  │──▶│  To-Do   │──▶│   In     │──▶│  Review  │──▶│   Done   │
 │          │   │          │   │ Progress │   │          │   │          │
-│ Safe     │   │ Agent    │   │ Agent    │   │ Human    │   │          │
-│ space.   │   │ evaluates│   │ builds.  │   │ verifies.│   │          │
-│ No agents│   │ & asks   │   │ Human    │   │          │   │          │
-│ here.    │   │ questions.│  │ triggered│   │          │   │          │
+│ Safe     │   │ Agent    │   │ Agent    │   │ Agent    │   │          │
+│ space.   │   │ evaluates│   │ builds.  │   │ reviews, │   │          │
+│ No agents│   │ & asks   │   │ Human    │   │ then     │   │          │
+│ here.    │   │ questions.│  │ triggered│   │ human    │   │          │
+│          │   │          │   │          │   │ verifies.│   │          │
 └──────────┘   └──────────┘   └──────────┘   └──────────┘   └──────────┘
 ```
 
@@ -37,6 +38,8 @@ See [docs/workflow.md](docs/workflow.md) for the full breakdown.
 | [docs/agents.md](docs/agents.md) | Agent roles, responsibilities, and how they interact with humans |
 | [docs/opinions.md](docs/opinions.md) | Every opinionated decision we made and why |
 | [docs/testing.md](docs/testing.md) | Testing strategy — unit, integration, and E2E with Playwright |
+| [docs/bugfix.md](docs/bugfix.md) | Bug fix workflow — lighter-weight path for bugs vs. features |
+| [docs/prompts.md](docs/prompts.md) | Agent prompt templates — how to brief each agent with real examples |
 | [docs/architecture.md](docs/architecture.md) | Technical architecture and integration patterns |
 
 ## Who This Is For

@@ -48,6 +48,44 @@ These are the agents that actually build. Each one is specialized:
 - Writes Playwright E2E tests for frontend flows
 - Runs in the same environment as CI (no local-only assumptions)
 
+## Code Review Agent
+
+**When:** PR is created and CI passes, before human review
+**Job:** First-pass review — catch mechanical issues so the human reviewer can focus on intent
+**Communicates via:** PR comments
+
+This agent sits between the implementation agents and the human reviewer. It doesn't approve or merge anything. It reviews the PR and posts comments categorized as:
+
+- **Must fix** — Issues that should be addressed before merge (security gaps, missing tests for new behavior, breaking changes to existing contracts)
+- **Consider** — Suggestions worth thinking about but not blocking (naming, potential edge cases, alternative approaches)
+- **Looks good** — Things done well (yes, calling out good work matters)
+
+### What it checks
+
+- Do the changes match what the linked issue asked for?
+- Do the tests actually test the described behavior, or are they just testing that the code runs?
+- Are there security issues? (exposed secrets, missing auth checks, unsanitized input)
+- Does the code follow existing codebase patterns?
+- Are there new dependencies, and are they justified?
+
+### What it doesn't check
+
+- Style and formatting — linters handle that
+- Minor preferences — if the code works and follows patterns, don't nitpick
+- Performance micro-optimizations — unless there's an obvious problem like a query in a loop
+
+### Why this exists
+
+Human review is non-negotiable. But human attention is limited. If a reviewer spends 20 minutes catching a missing null check, an unused import, and a test that doesn't assert anything meaningful, they have less energy for the question that actually matters: "does this change make sense?"
+
+The code review agent handles the first category so the human can focus on the second.
+
+### What it is not
+
+It is not the final reviewer. It is not a gate. A human always reviews after it. If the agent isn't sure about something, it says so rather than pretending to have an opinion.
+
+See [docs/prompts.md](prompts.md) for the full prompt template.
+
 ## What Agents Don't Do
 
 - **Agents don't move issues between columns.** Humans do that.
