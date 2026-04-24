@@ -1,12 +1,16 @@
 # Testing Strategy
 
-How testing fits into the workflow. Three layers, each with a clear purpose.
+How testing fits into the workflow. Three layers, each with a clear purpose and each owned by its own child issue.
 
 ## Unit & Integration Tests
 
-**When:** Written by the implementation agent alongside the code
+**When:** Written by the test agent after the feature code is in Review
 **Run:** In CI (GitHub Actions or equivalent)
 **Environment:** Clean container — no cached dependencies, no local state
+
+Unit and integration tests live in a separate child issue from the feature code. A backend feature child opens its PR, moves to Review, and passes review. At that point the architect moves the companion backend-tests child to In Progress, and the test agent writes tests against the already-reviewed feature code.
+
+This is a deliberate split (see [opinions.md](opinions.md) — "No test-driven development for agent-driven work"). The feature child's PR is ready when its own code is reviewable; the feature itself is **Done** only when its tests also pass.
 
 Integration tests hit real services, not mocks. If you mock the database and the mock diverges from the real thing, your tests pass but production breaks. Spin up the dependencies in containers (Docker Compose) and test against them.
 
@@ -18,9 +22,11 @@ This catches the class of bugs where tests pass locally because of stale cached 
 
 ## E2E Tests with Playwright
 
-**When:** Written by the testing agent after frontend implementation
+**When:** Written by the E2E test agent after the frontend child issue has reached Ready
 **Run:** In CI as a separate action
 **What it does:** Simulates real user interactions — clicking buttons, filling forms, navigating pages
+
+The E2E child issue is a child of the frontend child in the hierarchy. It can't start until the frontend is complete, and the backend it depends on is already in Ready by that point too. The E2E agent has a stable feature branch to test against.
 
 Playwright is our recommended framework for end-to-end testing. It:
 - Runs in headless mode in CI (just get the report)
@@ -42,8 +48,14 @@ A human may still manually validate the specific change in a release, but the as
 
 ## The testing sequence
 
-1. Backend implementation + integration tests
-2. Frontend implementation
-3. E2E tests (Playwright)
+Expressed in the child-issue hierarchy:
 
-E2E tests come last because they depend on both backend and frontend being stable. Running them earlier would just produce false failures.
+```
+Root feature
+└── Backend
+    ├── Backend tests (unit + integration)
+    └── Frontend
+        └── E2E tests (Playwright)
+```
+
+The architect moves children through In Progress in that order — backend first, its tests once the backend PR is in Review, frontend after backend tests are in Ready, E2E last. Every child hits Ready before siblings that depend on it kick off. E2E runs against a stable feature branch with real backend and real frontend.
