@@ -2,6 +2,14 @@
 
 How testing fits into the workflow. Three layers, each with a clear purpose and each owned by its own child issue.
 
+## Two different things called "testing"
+
+This doc is about testing the **product** — does the feature work? That's unit tests, integration tests, E2E tests, and the rest. Failures here mean the code doesn't do what the issue asked for.
+
+A separate doc, [evals.md](evals.md), covers testing the **agents** — are they getting better, worse, or drifting over time? Failures there mean the agent that wrote the code is behaving differently than it used to, even when the code passes every test in this doc.
+
+The two layers do not substitute for each other. A green test suite tells you the product works today; it tells you nothing about agent drift. A passing Eval Gate tells you the agent is still behaving like it used to; it tells you nothing about whether the resulting product is correct. The framework needs both — and they belong in separate docs because they're solving different problems.
+
 ## Unit & Integration Tests
 
 **When:** Written by the test agent after the feature code is in Review

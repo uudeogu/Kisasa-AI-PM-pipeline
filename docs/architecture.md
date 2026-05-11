@@ -4,6 +4,36 @@ How the pieces connect technically. This is intentionally high-level — the spe
 
 ## The trigger chain
 
+There are two entry points into the system — an **intake trigger chain** (inbound content from external channels) and a **tracker trigger chain** (lane changes inside the issue tracker). Both terminate in the same GitHub Actions runtime.
+
+### Intake trigger chain
+
+```
+Channel adapters
+  (call transcript service, email mailbox,
+   Slack app, NPS webhook, support escalation,
+   voicemail-to-text)
+       │
+       ▼
+Intake webhook receiver (serverless)
+       │
+       ├── Normalizes payload to canonical schema
+       ├── Redacts PII and secrets BEFORE anything is logged or prompted
+       └── Enqueues for the Intake Agent
+               │
+               ▼
+       GitHub Dispatch Event (intake-agent run)
+               │
+               ▼
+       GitHub Actions Workflow → Intake Agent
+               │
+               └── Searches tracker, decides append / create / park
+```
+
+PII redaction happens at the serverless layer, **before** the content is enqueued. By the time the Intake Agent prompt is constructed, the content is already redacted. Once redacted content has entered an LLM prompt, the redaction has to be permanent — there is no "un-redact later" pattern that is safe.
+
+### Tracker trigger chain
+
 ```
 Issue Tracker (webhook)
        │
@@ -21,19 +51,21 @@ Serverless Function (e.g., Vercel, Lambda)
        GitHub Actions Workflow
                │
                ├── Sets up MCP server
-               ├── Sets up Claude Code
+               ├── Sets up Claude Code at the routed model tier
                └── Kicks off the right agent for the lane
 ```
 
 ### Which lanes trigger agents
 
-Only three of the seven lanes kick off agents:
+Five lanes kick off agents; four are safe zones:
 
-| Lane | Agent | Trigger condition |
-|------|-------|-------------------|
+| Lane | Agent(s) | Trigger condition |
+|------|----------|-------------------|
+| Intake | Intake Agent | New content lands via a channel adapter (not an issue-tracker event) |
 | Evaluation | Evaluation Agent | Root issue enters Evaluation |
-| In Progress | Specialist implementation agent | Child issue enters In Progress (agent is determined by the label the Evaluation Agent assigned) |
+| In Progress | Specialist implementation agent at the routed tier | Child issue enters In Progress (specialist is set by label; tier is read from the sizing block in the issue description) |
 | Review | Code Review Agent | PR is opened from a feature branch |
+| Eval Gate | Automated eval runner | Architect sign-off label is applied to a PR in Review |
 
 The other four — Backlog, To-Do, Ready, Done — are safe zones. A transition into one of them does not fire anything. The webhook filter rejects them before a dispatch event is created.
 
@@ -50,6 +82,15 @@ The other four — Backlog, To-Do, Ready, Done — are safe zones. A transition 
 ### Human override on the Evaluation Agent
 
 When the Evaluation Agent posts its "ready" signal, the default path is for a human to move the issue from Evaluation to To-Do. A human can also force the issue to To-Do before the agent has posted ready — this is the override. Implementation: the architect either adds a label the filter accepts, or manually changes the lane in the tracker. Either way, the architect's move is the trigger, not the agent's signal.
+
+### Runtime safety signals
+
+Two signals run alongside the trigger chain. Both can interrupt an in-flight agent run without going through the lane-change webhook path:
+
+- **STOP label** — Any human can apply a `STOP` label on an issue or PR. The serverless filter watches for this label specifically and emits a halt event to the active GitHub Actions run, which terminates the agent within 30 seconds, reverts any open PR to draft, and preserves a partial-progress note as an issue comment. See [evals.md](evals.md).
+- **Cost-ceiling watchdog** — The agent runtime tracks token consumption against the issue's budgeted ceiling. At 2× budget without a PR, the runtime pauses the agent, posts a structured summary comment, and waits for the architect to choose continue / split / kill. See [sizing-and-routing.md](sizing-and-routing.md).
+
+These are out-of-band from the lane-change webhook path because lane changes happen only on transitions, but a runaway agent may be stuck mid-lane. The safety signals catch failures that don't naturally surface as a lane transition.
 
 ### Deferred automation — root auto-move and batched merge
 
@@ -88,10 +129,14 @@ This lives in a Claude project (or equivalent). Every chat in that project has a
 | Component | Purpose | Examples |
 |-----------|---------|----------|
 | Issue tracker | Where issues live and move between columns | Linear, Jira, GitHub Issues |
-| Webhook receiver | Catches issue changes and filters them | Vercel function, AWS Lambda, Cloudflare Worker |
+| Channel adapters | Feed inbound content into the Intake webhook | Otter / Fireflies (calls), Postmark (email), Slack app, Zendesk → webhook |
+| Intake webhook receiver | Normalizes inbound content, redacts PII, dispatches the Intake Agent | Vercel function, AWS Lambda, Cloudflare Worker |
+| Tracker webhook receiver | Catches issue / PR / label changes and filters them | Same serverless platform |
 | CI/CD platform | Runs agents and tests | GitHub Actions |
-| Agent runtime | Executes the AI agent | Claude Code |
+| Agent runtime | Executes the AI agent at the routed model tier | Claude Code with model selection per dispatch |
 | Tool access | Lets agents read code and interact with services | MCP servers |
+| Trajectory logging | Captures inputs, tools, tokens, decisions for every agent run | LangSmith, Braintrust, or an append-only object store |
+| Eval runner | Executes the three-tier Eval Gate on signed-off PRs | GitHub Actions workflow with the in-repo `evals/` directory |
 | E2E test framework | Validates user-facing behavior | Playwright |
 
 ## What you don't need

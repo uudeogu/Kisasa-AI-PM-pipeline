@@ -8,6 +8,12 @@ AI agents can do a lot. They can create issues from customer feedback, write cod
 
 **Why:** Fully autonomous pipelines optimize for speed at the cost of judgment. When something goes wrong (and it will), you need a human who understood the context at each step. More importantly, the intermediate human decisions — which issue to pick up next, whether the hierarchy looks right, whether this PR actually makes sense — are where the real quality comes from.
 
+## An Intake lane exists in front of the Backlog
+
+Work doesn't arrive as well-written tickets. It arrives as customer calls, emails, Slack threads, NPS comments, support escalations, and voicemails. The Intake lane is the safe zone that normalizes those into something the rest of the workflow can pick up. See [intake.md](intake.md).
+
+**Why:** Without a formal Intake lane, one of two things happens. Either the PM hand-transcribes everything from memory and the framework starts from a thin issue. Or work bypasses the framework entirely — somebody pings the engineer, the engineer fixes it, no issue, no trace. Both fail in the same way: the workflow's first lane only sees a subset of what's actually moving through the team. Intake closes that gap with a search-first agent that defaults to appending to existing issues, creates new ones only above a confidence threshold, and redacts PII before any content enters an agent prompt.
+
 ## Safe zones between every automated stage
 
 Backlog, To-Do, and Ready are lanes where no agents fire. Evaluation, In Progress, and Review are lanes where they do. Every automated stage has a safe zone before and after it.
@@ -32,6 +38,18 @@ Decomposing a feature into backend/frontend/tests children is a real decision. W
 
 **Why:** The list of specialties is finite and known in advance (the agents we have defined). The dependency rules are simple (frontend blocks on backend, E2E blocks on both). A well-generated Evaluation Agent already has context on every specialist agent available. It's qualified to make this call, and handing the decomposition to the architect for every issue is work the agent should be absorbing. The architect still reviews the hierarchy in To-Do — they just don't build it from scratch.
 
+## Three numbers per issue: story points, ACUs, and token budget
+
+Every child issue gets sized with three numbers, not one. Story points capture complexity and risk. ACUs (Agent Compute Units, ≈15 min each) capture expected agent time. Token budget captures cost ceiling. See [sizing-and-routing.md](sizing-and-routing.md).
+
+**Why:** A 2-line dependency bump and a 600-line cross-cutting refactor look identical to the orchestrator unless we size them. One number isn't enough — story points alone don't predict whether an agent can finish, and time-or-cost alone doesn't predict complexity or risk. The three numbers together give the framework what it needs to enforce a hard split rule (>5 pts OR >4 ACUs returns to Evaluation), pick the right model tier, and trigger the cost-ceiling watchdog when an agent grinds past 2× its budget.
+
+## Model routing by size, not by specialty
+
+Each specialist agent exists in three model tiers — Haiku, Sonnet, Opus — and the Router picks the tier based on the issue's size, not the specialty. The same backend-specialist prompt runs on Haiku for a 1-point rename and on Opus for a 5-point cross-cutting change.
+
+**Why:** This is the single largest cost lever in the framework. Industry data puts well-tuned model routing at 50-80% cost reduction with no measurable quality loss on small tasks. The mistake most teams make is binding a specialist to a single model — Haiku-only loses on hard problems, Opus-only burns money on trivial ones. Specialist and model are a 2D matrix; you pick both, independently, per child issue. The escalation ladder (fail 2× → upgrade tier; fail 4× → page the architect) means misclassifications self-correct without human-in-the-loop overhead until the agents have lost twice.
+
 ## One agent per child issue
 
 Each child issue gets exactly one specialist agent. Backend issues get the backend agent. Tests get the test agent. Not both on one issue.
@@ -55,6 +73,12 @@ The architect moves children from To-Do to In Progress one at a time, watching f
 A child PR that's been reviewed is not the same as a child PR that's ready to merge. Reviewed means "looks good." Ready to merge means "all its siblings are also reviewed, and merging now won't leave `main` half-built."
 
 **Why:** If you merge each child as it passes review, `main` briefly holds a backend change without the frontend that uses it. Tests are out of sync. Deploys are dangerous. Batching the merge — hold every child in Ready until the whole feature is ready — keeps `main` in a coherent state at every commit. Ready is also where future gates (load testing, smoke tests, security review) can live without blocking per-child review.
+
+## An Eval Gate sits between Review and Ready
+
+A PR that has passed mechanical review by the Code Review Agent and intent review by the human architect still goes through one more gate before reaching Ready — an automated three-tier eval (schema validation, behavioral evals, outcome evals scored against historical golden diffs). See [evals.md](evals.md).
+
+**Why:** Mechanical review and intent review answer "is this PR good?" Neither answers "is the agent that wrote it still behaving the way it used to?" Without an automated regression signal for the agents themselves, drift is invisible until a production incident. The Eval Gate catches scope creep, prompt-change degradation, and behavioral shifts before they ship. Every failed run auto-promotes to the eval set; every post-mortem must produce at least one new eval entry — that closes the loop and turns incidents into permanent improvements to the regression suite instead of forgettable retros.
 
 ## Merging the root issue merges everything
 
